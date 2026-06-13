@@ -1,0 +1,32 @@
+# AI Monitor Configuration
+general:
+  # Start AI Monitor automatically when Windows boots
+  auto_start: false
+
+deepseek:
+  # Replace with your actual API key
+  api_key: "sk-your-deepseek-api-key-here"
+  base_url: "https://api.deepseek.com"
+
+notifications:
+  # Alert when balance is below this amount (CNY)
+  balance_threshold: 10.0
+  # Alert when daily tokens exceed this percentage of monthly average
+  token_surge_threshold: 50
+  # Cooldown period in minutes for same notification type
+  cooldown_minutes: 30
+
+monitor:
+  # Refresh interval in seconds
+  refresh_interval: 60
+
+storage:
+  # Database path (empty = auto: %APPDATA%/AI-Monitor/monitor.db)
+  db_path: ""
+
+proxy:
+  # If set, AI Monitor acts as a local reverse proxy.
+  # Configure your app's base_url to http://localhost:<port>
+  # to enable token usage tracking from chat completions.
+  enabled: false
+  listen: "127.0.0.1:8080"

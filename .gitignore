@@ -1,0 +1,19 @@
+# Binaries
+AI-Monitor*.exe
+*.exe
+
+# Config with secrets
+config.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build
+/tmp/
