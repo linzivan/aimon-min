@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [1.0.0] — 2026-06-13
 
+### Changed
+
+- Repository renamed to `aimon-min` (极简AI监控)
+
 ### Added
 
 - **DeepSeek Balance Monitoring** — Real-time display of DeepSeek account balance on a desktop widget, updated every 60s (configurable)

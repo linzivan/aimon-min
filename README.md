@@ -1,6 +1,8 @@
-# AI Monitor
+# AI Monitor (aimon-min)
 
-> 轻量级 Windows 桌面监控工具 — 实时追踪 DeepSeek API 余额与 Token 用量
+> 极简 Windows 桌面监控工具 — 实时追踪 DeepSeek API 余额与 Token 用量
+
+[![GitHub](https://img.shields.io/badge/repo-aimon--min-181717?logo=github)](https://github.com/linzivan/aimon-min)
 
 ![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)
 ![Platform](https://img.shields.io/badge/Platform-Windows_10/11-0078D6?logo=windows)
