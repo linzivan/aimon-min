@@ -6,6 +6,7 @@ import (
 	"syscall"
 	"unsafe"
 
+	"ai-monitor/internal/logger"
 	"ai-monitor/internal/types"
 
 	"golang.org/x/sys/windows"
@@ -208,7 +209,7 @@ func (w *Widget) Start() error {
 
 	procShowWindow.Call(hwnd, swShow)
 	procUpdateWindow.Call(hwnd)
-	fmt.Println("[widget] badge v5 ready")
+	logger.Info("[widget] started")
 
 	w.wg.Add(1); go w.messageLoop()
 	return nil
@@ -224,7 +225,14 @@ func (w *Widget) messageLoop() {
 		ret, _, _ := procGetMessageW.Call(uintptr(unsafe.Pointer(&msg)), 0, 0, 0)
 		if ret == 0 { break }
 		procTranslateMessage.Call(uintptr(unsafe.Pointer(&msg)))
-		procDispatchMessageW.Call(uintptr(unsafe.Pointer(&msg)))
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					logger.Error("[widget] windowProc panic on msg %d: %v", msg.Message, r)
+				}
+			}()
+			procDispatchMessageW.Call(uintptr(unsafe.Pointer(&msg)))
+		}()
 	}
 	w.mu.Lock(); w.running = false; w.mu.Unlock()
 }

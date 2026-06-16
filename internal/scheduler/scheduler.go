@@ -2,7 +2,8 @@ package scheduler
 
 import (
 	"context"
-	"fmt"
+
+	"ai-monitor/internal/logger"
 	"sync"
 	"time"
 )
@@ -36,7 +37,7 @@ func (s *Scheduler) Register(task *Task) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.tasks = append(s.tasks, task)
-	fmt.Printf("[scheduler] registered task: %s (every %v)\n", task.Name, task.Interval)
+	logger.Info("[scheduler] registered task: %s (every %v)", task.Name, task.Interval)
 }
 
 // Start begins all registered tasks.
@@ -49,7 +50,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 	}
 	s.running = true
 
-	fmt.Printf("[scheduler] starting %d tasks...\n", len(s.tasks))
+	logger.Info("[scheduler] starting %d tasks...", len(s.tasks))
 
 	for _, task := range s.tasks {
 		taskCtx, cancel := context.WithCancel(ctx)
@@ -70,13 +71,13 @@ func (s *Scheduler) Stop() {
 	}
 	s.running = false
 
-	fmt.Println("[scheduler] stopping all tasks...")
+	logger.Info("[scheduler] stopping all tasks...")
 	for _, cancel := range s.cancels {
 		cancel()
 	}
 	s.cancels = nil
 	s.wg.Wait()
-	fmt.Println("[scheduler] all tasks stopped")
+	logger.Info("[scheduler] all tasks stopped")
 }
 
 // Running returns whether the scheduler is running.
@@ -106,6 +107,13 @@ func (s *Scheduler) runTask(ctx context.Context, task *Task) {
 }
 
 func (s *Scheduler) executeTask(ctx context.Context, task *Task) {
+	// Recover from any panic so the goroutine lives on
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error("[scheduler] task %s PANICKED: %v", task.Name, r)
+		}
+	}()
+
 	// If context is already done, skip
 	if ctx.Err() != nil {
 		return
@@ -116,8 +124,8 @@ func (s *Scheduler) executeTask(ctx context.Context, task *Task) {
 	elapsed := time.Since(start)
 
 	if err != nil {
-		fmt.Printf("[scheduler] task %s failed after %v: %v\n", task.Name, elapsed, err)
+		logger.Error("[scheduler] task %s failed after %v: %v", task.Name, elapsed, err)
 	} else {
-		fmt.Printf("[scheduler] task %s completed in %v\n", task.Name, elapsed)
+		logger.Info("[scheduler] task %s completed in %v", task.Name, elapsed)
 	}
 }

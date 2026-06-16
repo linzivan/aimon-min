@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"ai-monitor/internal/logger"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -55,7 +56,7 @@ func Enable() error {
 	if err := k.SetStringValue(appName, abs); err != nil {
 		return fmt.Errorf("autostart: set value: %w", err)
 	}
-	fmt.Printf("[autostart] enabled: %s\n", abs)
+	logger.Info("[autostart] enabled: %s", abs)
 	return nil
 }
 
@@ -72,6 +73,6 @@ func Disable() error {
 			return fmt.Errorf("autostart: delete value: %w", err)
 		}
 	}
-	fmt.Println("[autostart] disabled")
+	logger.Info("[autostart] disabled")
 	return nil
 }

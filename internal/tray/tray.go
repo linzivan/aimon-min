@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"ai-monitor/internal/autostart"
+	"ai-monitor/internal/logger"
 	"ai-monitor/internal/icon"
 	"ai-monitor/internal/types"
 
@@ -99,21 +100,35 @@ func (t *Tray) onReady() {
 		for {
 			select {
 			case <-t.refreshItem.ClickedCh:
-				if t.onRefresh != nil {
-					t.onRefresh()
-				}
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							logger.Error("[tray] refresh panic: %v", r)
+						}
+					}()
+					if t.onRefresh != nil {
+						t.onRefresh()
+					}
+				}()
 			case <-t.settingItem.ClickedCh:
 				if t.onSetting != nil {
 					t.onSetting()
 				}
 			case <-t.autoStartItem.ClickedCh:
-				if t.autoStartItem.Checked() {
-					autostart.Disable()
-					t.autoStartItem.Uncheck()
-				} else {
-					autostart.Enable()
-					t.autoStartItem.Check()
-				}
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							logger.Error("[tray] autostart panic: %v", r)
+						}
+					}()
+					if t.autoStartItem.Checked() {
+						autostart.Disable()
+						t.autoStartItem.Uncheck()
+					} else {
+						autostart.Enable()
+						t.autoStartItem.Check()
+					}
+				}()
 			case <-t.exitItem.ClickedCh:
 				if t.onExit != nil {
 					t.onExit()
@@ -122,7 +137,7 @@ func (t *Tray) onReady() {
 		}
 	}()
 
-	fmt.Println("[tray] system tray ready")
+	logger.Info("[tray] system tray ready")
 }
 
 func (t *Tray) onExit_() {

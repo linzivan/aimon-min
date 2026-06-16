@@ -17,3 +17,8 @@ Thumbs.db
 
 # Build
 /tmp/
+
+# Runtime data
+monitor.db
+monitor.db-*
+monitor.log

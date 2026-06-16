@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"ai-monitor/internal/config"
+	"ai-monitor/internal/logger"
 	"ai-monitor/internal/lifecycle"
 )
 
@@ -30,6 +31,13 @@ func main() {
 
 	// Load configuration
 	cfg, err := config.Load(*configPath)
+
+	// Initialize file logger
+	if err := logger.Init(); err != nil {
+		fmt.Fprintf(os.Stderr, "WARN: logger init: %v\n", err)
+	}
+	logger.Info("AI Monitor v%s starting", version)
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "FATAL: load config: %v\n", err)
 		os.Exit(1)

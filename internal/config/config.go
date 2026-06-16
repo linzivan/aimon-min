@@ -81,15 +81,21 @@ func DefaultConfig() *Config {
 }
 
 // Load reads configuration from a YAML file.
-// If path is empty, it searches default locations:
-//   1. ./config.yaml (current directory)
-//   2. %APPDATA%/AI-Monitor/config.yaml
+// Search order:
+//   1. explicit --config path
+//   2. exe directory (covers auto-start where cwd != exe dir)
+//   3. ./config.yaml (current directory)
+//   4. %APPDATA%/AI-Monitor/config.yaml
 func Load(path string) (*Config, error) {
 	cfg := DefaultConfig()
 
 	paths := []string{}
 	if path != "" {
 		paths = append(paths, path)
+	}
+	// Exe directory — covers auto-start on boot (cwd != exe dir)
+	if exe, err := os.Executable(); err == nil {
+		paths = append(paths, filepath.Join(filepath.Dir(exe), "config.yaml"))
 	}
 	paths = append(paths, "config.yaml")
 	appData := os.Getenv("APPDATA")
@@ -122,11 +128,10 @@ func (c *Config) DBPath() string {
 	if c.Storage.DBPath != "" {
 		return c.Storage.DBPath
 	}
-	appData := os.Getenv("APPDATA")
-	if appData == "" {
-		appData = "."
+	// Default: exe directory (same as config.yaml and log)
+	exeDir := "."
+	if exe, err := os.Executable(); err == nil {
+		exeDir = filepath.Dir(exe)
 	}
-	dir := filepath.Join(appData, "AI-Monitor")
-	os.MkdirAll(dir, 0755)
-	return filepath.Join(dir, "monitor.db")
+	return filepath.Join(exeDir, "monitor.db")
 }

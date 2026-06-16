@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ai-monitor/internal/autostart"
+	"ai-monitor/internal/logger"
 	"ai-monitor/internal/config"
 	"ai-monitor/internal/notification"
 	"ai-monitor/internal/provider"
@@ -61,7 +62,7 @@ func New(cfg *config.Config) (*App, error) {
 	var prx *proxy.Proxy
 	if cfg.Proxy.Enabled {
 		prx = proxy.New(cfg.DeepSeek.BaseURL, cfg.DeepSeek.APIKey, store)
-		fmt.Printf("[app] proxy enabled on %s\n", cfg.Proxy.Listen)
+		logger.Info("[app] proxy enabled on %s", cfg.Proxy.Listen)
 	}
 
 	// Initialize widget (v2 - static controls)
@@ -115,7 +116,7 @@ func (a *App) Run() error {
 	a.ctx, a.cancel = context.WithCancel(context.Background())
 	a.mu.Unlock()
 
-	fmt.Println("[app] starting AI Monitor...")
+	logger.Info("[app] starting AI Monitor...")
 
 	// Start scheduler (collects metrics on a timer)
 	a.sched.Start(a.ctx)
@@ -126,7 +127,7 @@ func (a *App) Run() error {
 		go func() {
 			defer a.wg.Done()
 			if err := a.prx.Start(a.cfg.Proxy.Listen); err != nil {
-				fmt.Printf("[app] proxy error: %v\n", err)
+				logger.Error("[app] proxy error: %v", err)
 			}
 		}()
 		time.Sleep(50 * time.Millisecond) // let proxy bind
@@ -142,7 +143,7 @@ func (a *App) Run() error {
 	go func() {
 		defer a.wg.Done()
 		if err := a.widget.Start(); err != nil {
-			fmt.Printf("[app] widget error: %v\n", err)
+			logger.Error("[app] widget error: %v", err)
 		}
 	}()
 
@@ -152,7 +153,7 @@ func (a *App) Run() error {
 	a.refreshDisplay()
 
 	// Run tray (blocking)
-	fmt.Println("[app] tray running (blocking)...")
+	logger.Info("[app] tray running (blocking)...")
 	a.tray.Start()
 
 	return nil
@@ -160,7 +161,7 @@ func (a *App) Run() error {
 
 // Shutdown gracefully stops all components.
 func (a *App) Shutdown() {
-	fmt.Println("[app] shutting down...")
+	logger.Info("[app] shutting down...")
 
 	// Stop scheduler first (no more data collection)
 	a.sched.Stop()
@@ -194,7 +195,7 @@ func (a *App) Shutdown() {
 		a.store.Close()
 	}
 
-	fmt.Println("[app] shutdown complete")
+	logger.Info("[app] shutdown complete")
 }
 
 // collectMetrics is the main task handler called by the scheduler.
@@ -205,20 +206,26 @@ func (a *App) collectMetrics(ctx context.Context) error {
 
 	metrics, err := a.p.Collect(ctx)
 	if err != nil {
-		fmt.Printf("[app] collect error: %v\n", err)
-
-		// Send notification if API error (with cooldown)
-		if a.notify != nil {
-			a.notify.SendAPIError("DeepSeek", err)
+		logger.Warn("[app] collect error (attempt 1): %v", err)
+		// Retry once after 2s delay
+		select {
+		case <-time.After(2 * time.Second):
+			metrics, err = a.p.Collect(ctx)
+			if err != nil {
+				logger.Error("[app] collect error (attempt 2, giving up): %v", err)
+			}
+		case <-ctx.Done():
+			return ctx.Err()
 		}
-
-		// Update display with error state
-		m := &types.Metrics{
+	}
+	// Both attempts failed → show empty balance
+	if err != nil {
+		empty := &types.Metrics{
 			ProviderName: "deepseek",
-			Error:        err.Error(),
+			Error:        "network",
 			CollectedAt:  time.Now(),
 		}
-		a.lastMetrics = m
+		a.lastMetrics = empty
 		a.refreshDisplay()
 		return err
 	}
@@ -307,17 +314,17 @@ func (a *App) refreshDisplay() {
 
 // onRefresh is called when the user clicks "Refresh" in the tray.
 func (a *App) onRefresh() {
-	fmt.Println("[app] manual refresh requested")
+	logger.Info("[app] manual refresh requested")
 	// Run collection synchronously
 	err := a.collectMetrics(context.Background())
 	if err != nil {
-		fmt.Printf("[app] refresh failed: %v\n", err)
+		logger.Error("[app] refresh failed: %v", err)
 	}
 }
 
 // onExit is called when the user clicks "Exit".
 func (a *App) onExit() {
-	fmt.Println("[app] exit requested")
+	logger.Info("[app] exit requested")
 	// Shutdown may not fully unwind because systray.Quit() posts to the
 	// main thread's message queue from a different goroutine.
 	// Force process exit to guarantee clean termination.
@@ -331,6 +338,6 @@ func (a *App) onExit() {
 
 // onSetting is called when the user clicks "Settings".
 func (a *App) onSetting() {
-	fmt.Println("[app] settings requested (NYI)")
+	logger.Warn("[app] settings requested (NYI)")
 	a.notify.SendBalanceLow(0, 0) // Placeholder
 }
